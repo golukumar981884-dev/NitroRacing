@@ -200,10 +200,18 @@ func _build_world() -> void:
 	var e := Environment.new()
 	e.background_mode = Environment.BG_SKY
 	e.sky = Sky.new()
-	e.sky.sky_material = ProceduralSkyMaterial.new()
-	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.55, 0.62, 0.78)
-	e.ambient_light_energy = 0.95
+	var hdri_path := "res://assets/hdri/racing_sky_2k.hdr"
+	if ResourceLoader.exists(hdri_path):
+		var panorama := PanoramaSkyMaterial.new()
+		panorama.panorama = load(hdri_path) as Texture2D
+		e.sky.sky_material = panorama
+		e.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		e.ambient_light_energy = 0.8
+	else:
+		e.sky.sky_material = ProceduralSkyMaterial.new()
+		e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		e.ambient_light_color = Color(0.55, 0.62, 0.78)
+		e.ambient_light_energy = 0.95
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	e.glow_enabled = true
 	e.glow_intensity = 0.38
