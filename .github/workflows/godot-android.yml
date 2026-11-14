@@ -22,17 +22,16 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/cmdline-tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
-          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-          sdkmanager --sdk_root="$ANDROID_HOME" --install "build-tools;33.0.2"
-          test -x "$ANDROID_HOME/build-tools/33.0.2/aapt" || (echo "Android Build Tools 33.0.2 did not install correctly"; ls -la "$ANDROID_HOME/build-tools"; exit 1)
+          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          test -x "$ANDROID_HOME/build-tools/34.0.0/aapt" || (echo "Android Build Tools 34.0.0 did not install correctly"; ls -la "$ANDROID_HOME/build-tools"; exit 1)
           echo "=== Android SDK build-tools diagnostic ==="
           ls -la "$ANDROID_HOME/build-tools"
-          for v in 35.0.0 33.0.2; do
+          for v in 34.0.0; do
             echo "--- build-tools $v ---"
             ls -l "$ANDROID_HOME/build-tools/$v/apksigner" "$ANDROID_HOME/build-tools/$v/aapt" 2>&1 || true
             "$ANDROID_HOME/build-tools/$v/apksigner" --version 2>&1 || true
           done
-          test -f "$ANDROID_HOME/platforms/android-35/android.jar" || (echo "Android platform 35 missing"; exit 1)
+          test -f "$ANDROID_HOME/platforms/android-34/android.jar" || (echo "Android platform 34 missing"; exit 1)
 
           mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
           curl -L --fail --retry 3 \
