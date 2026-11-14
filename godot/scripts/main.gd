@@ -141,10 +141,10 @@ func _build_world() -> void:
 	for i in range(19):
 		var z := -235.0 + float(i) * 13.0
 		for side in [-1.0, 1.0]:
-			var x := side * (29.0 + float((i * 11) % 10))
-			var h := 17.0 + float((i * 7) % 15)
-			var w := 12.0 + float((i * 5) % 9)
-			var depth := 17.0 + float((i * 3) % 12)
+			var x: float = float(side) * (29.0 + float((i * 11) % 10))
+			var h: float = 17.0 + float((i * 7) % 15)
+			var w: float = 12.0 + float((i * 5) % 9)
+			var depth: float = 17.0 + float((i * 3) % 12)
 			var cliff_mat: Material = cliff_warm if i % 3 == 0 else (cliff_light if i % 3 == 1 else cliff_dark)
 			_mountain(self, Vector3(x, h * 0.42, z), Vector3(w, h, depth), cliff_mat, i * 9 + int(side))
 			_mountain(self, Vector3(x + side * 8.0, h * 0.62, z - 5.0), Vector3(w * 0.68, h * 0.78, depth * 0.72), cliff_dark, i * 13)
@@ -152,7 +152,7 @@ func _build_world() -> void:
 	for i in range(13):
 		var z := -218.0 + float(i) * 17.0
 		for side in [-1.0, 1.0]:
-			var spire_h := 8.0 + float((i * 5) % 8)
+			var spire_h: float = 8.0 + float((i * 5) % 8)
 			_mountain(self, Vector3(side * (19.0 + float(i % 3) * 2.0), spire_h * 0.5, z), Vector3(2.4, spire_h, 2.8), cliff_warm if i % 2 == 0 else cliff_dark, i + 31)
 	var glow := _mat(Color(0.0, 0.75, 1.0), 0.25, 0.25)
 	for z in [-30.0, -95.0, -160.0]:
