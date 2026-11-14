@@ -87,7 +87,22 @@ func _mountain(parent: Node3D, pos: Vector3, size: Vector3, material: Material, 
 	rock.material_override = material
 	parent.add_child(rock)
 
-func _surface_material(is_road: bool) -> ShaderMaterial:
+func _surface_material(is_road: bool) -> Material:
+	if is_road:
+		var albedo_path := "res://assets/textures/road_albedo.jpg"
+		var normal_path := "res://assets/textures/road_normal.jpg"
+		var roughness_path := "res://assets/textures/road_roughness.jpg"
+		if ResourceLoader.exists(albedo_path) and ResourceLoader.exists(normal_path) and ResourceLoader.exists(roughness_path):
+			var pbr := StandardMaterial3D.new()
+			pbr.albedo_texture = load(albedo_path) as Texture2D
+			pbr.normal_enabled = true
+			pbr.normal_texture = load(normal_path) as Texture2D
+			pbr.normal_scale = 0.7
+			pbr.roughness_texture = load(roughness_path) as Texture2D
+			pbr.roughness = 0.92
+			pbr.metallic = 0.0
+			pbr.uv1_scale = Vector3(7.0, 70.0, 1.0)
+			return pbr
 	var shader := Shader.new()
 	if is_road:
 		shader.code = """
@@ -366,6 +381,12 @@ func _build_hud() -> void:
 	hud_time.position = Vector2(1030, 30)
 	hud_time.add_theme_font_size_override("font_size", 26)
 	layer.add_child(hud_time)
+	var credits := Label.new()
+	credits.text = "Powered by Poly Haven"
+	credits.position = Vector2(1010, 66)
+	credits.add_theme_font_size_override("font_size", 12)
+	credits.add_theme_color_override("font_color", Color(0.72, 0.82, 0.92, 0.82))
+	layer.add_child(credits)
 	_make_button(layer, "◀", Vector2(38, 560), Vector2(112, 112), "left")
 	_make_button(layer, "▶", Vector2(164, 560), Vector2(112, 112), "right")
 	_make_button(layer, "BRAKE", Vector2(850, 580), Vector2(125, 88), "brake")
