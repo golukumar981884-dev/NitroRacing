@@ -297,8 +297,9 @@ func _build_car() -> void:
 	car.position = Vector3(0, 0.35, 4)
 	add_child(car)
 
-	# Prefer the textured, real-world-scale CC0 supercar downloaded by CI.
-	# Keep the procedural car as a safe fallback for editor runs without the asset.
+	# Prefer the detailed CC0 Spectral GT RS game-ready model downloaded by CI.
+	# Its authored forward axis is +X; rotate it to Godot's forward axis (-Z).
+	# Keep the procedural car as a safe fallback when the asset is unavailable.
 	var model_path := "res://assets/cars/player_supercar.glb"
 	if ResourceLoader.exists(model_path):
 		var packed_model := load(model_path) as PackedScene
@@ -306,6 +307,7 @@ func _build_car() -> void:
 			var model := packed_model.instantiate() as Node3D
 			if model != null:
 				model.scale = Vector3.ONE
+				model.rotation.y = PI / 2.0
 				model.position = Vector3(0, 0.25, 0)
 				car.add_child(model)
 				return
