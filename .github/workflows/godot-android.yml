@@ -12,13 +12,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download free CC0 supercar model
-        run: |
-          mkdir -p godot/assets/cars
-          curl -L --fail --retry 3 \
-            "https://files.innerscene.com/library/generic-mid-engine-supercar-73f252c5/b41b620d8a8890b1b70a/generic-mid-engine-supercar.glb" \
-            -o godot/assets/cars/player_supercar.glb
-          test "$(stat -c%s godot/assets/cars/player_supercar.glb)" -gt 1000000
 
       - name: Install Android export requirements
         run: |
@@ -61,6 +54,14 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           export/android/android_sdk_path = "$ANDROID_HOME"
           EOF
+
+      - name: Download free CC0 supercar model
+        run: |
+          mkdir -p godot/assets/cars
+          curl -L --fail --retry 3 \
+            "https://files.innerscene.com/library/generic-mid-engine-supercar-73f252c5/b41b620d8a8890b1b70a/generic-mid-engine-supercar.glb" \
+            -o godot/assets/cars/player_supercar.glb
+          test "$(stat -c%s godot/assets/cars/player_supercar.glb)" -gt 1000000
 
       - name: Validate Godot project
         run: |
