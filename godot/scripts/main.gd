@@ -45,6 +45,7 @@ func _process(delta: float) -> void:
 	car.position.x = clampf(car.position.x, -13.0, 13.0)
 	distance += speed * delta / 1000.0
 	camera.global_position = camera.global_position.lerp(car.global_position + Vector3(0, 5.2, 10.5), delta * 4.0)
+	camera.fov = lerpf(camera.fov, 74.0 + (12.0 if boost else 0.0), delta * 3.0)
 	camera.look_at(car.global_position + Vector3(0, 1.0, -5.0), Vector3.UP)
 	hud_speed.text = "%03d KM/H" % int(speed * 2.15)
 	hud_nitro.text = "NITRO  %d%%" % int(nitro)
@@ -75,7 +76,13 @@ func _build_world() -> void:
 	e.sky.sky_material = ProceduralSkyMaterial.new()
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	e.ambient_light_color = Color(0.55, 0.62, 0.78)
-	e.ambient_light_energy = 0.75
+	e.ambient_light_energy = 0.85
+	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	e.glow_enabled = true
+	e.glow_intensity = 0.55
+	e.fog_enabled = true
+	e.fog_light_color = Color(0.48, 0.58, 0.72)
+	e.fog_density = 0.006
 	env.environment = e
 	add_child(env)
 	var sun := DirectionalLight3D.new()
@@ -86,12 +93,19 @@ func _build_world() -> void:
 	var road := _mat(Color(0.075, 0.085, 0.105), 0.05, 0.92)
 	var edge := _mat(Color(0.88, 0.9, 0.94), 0.0, 0.8)
 	var grass := _mat(Color(0.11, 0.24, 0.18), 0.0, 1.0)
+	var rail := _mat(Color(0.48, 0.56, 0.64), 0.72, 0.28)
+	var lane := _mat(Color(0.95, 0.82, 0.38), 0.05, 0.55)
 	_box(self, Vector3(200, 0.2, 300), Vector3(0, -0.35, -100), grass)
 	_box(self, Vector3(30, 0.25, 280), Vector3(0, -0.18, -100), road)
 	for z in range(-230, 40, 18):
 		_box(self, Vector3(0.22, 0.025, 7), Vector3(0, -0.035, z), edge)
+		_box(self, Vector3(0.13, 0.03, 7), Vector3(-5.2, -0.025, z), lane)
+		_box(self, Vector3(0.13, 0.03, 7), Vector3(5.2, -0.025, z), lane)
 		_box(self, Vector3(0.6, 0.25, 8), Vector3(-15.4, -0.05, z), edge)
 		_box(self, Vector3(0.6, 0.25, 8), Vector3(15.4, -0.05, z), edge)
+	for side in [-1.0, 1.0]:
+		_box(self, Vector3(0.32, 0.65, 280), Vector3(side * 15.0, 0.18, -100), rail)
+		_box(self, Vector3(0.18, 0.22, 280), Vector3(side * 15.0, 0.62, -100), edge)
 	var rock := _mat(Color(0.28, 0.31, 0.36), 0.0, 1.0)
 	var tree := _mat(Color(0.08, 0.25, 0.16), 0.0, 0.9)
 	for i in range(34):
@@ -110,18 +124,49 @@ func _build_car() -> void:
 	car.position = Vector3(0, 0.35, 4)
 	add_child(car)
 	var paint := _mat(Color(0.02, 0.42, 0.95), 0.82, 0.2)
-	var glass := _mat(Color(0.025, 0.055, 0.09), 0.5, 0.12)
+	var glass := _mat(Color(0.025, 0.055, 0.09), 0.62, 0.12)
+	var trim := _mat(Color(0.012, 0.018, 0.028), 0.45, 0.3)
+	var alloy := _mat(Color(0.55, 0.68, 0.78), 0.85, 0.2)
+	var red := _mat(Color(1.0, 0.035, 0.025), 0.2, 0.25)
 	var rubber := _mat(Color(0.012, 0.014, 0.02), 0.0, 0.95)
 	_box(car, Vector3(2.05, 0.58, 4.25), Vector3(0, 0.48, 0), paint)
 	_box(car, Vector3(1.55, 0.55, 1.9), Vector3(0, 0.98, -0.25), glass)
 	_box(car, Vector3(1.9, 0.16, 0.55), Vector3(0, 0.3, -2.0), paint)
+	_box(car, Vector3(0.12, 0.025, 2.5), Vector3(0, 0.79, -0.1), alloy)
+	_box(car, Vector3(2.0, 0.12, 0.16), Vector3(0, 1.25, 1.55), trim)
+	_box(car, Vector3(0.12, 0.48, 0.12), Vector3(-0.72, 1.02, 1.55), trim)
+	_box(car, Vector3(0.12, 0.48, 0.12), Vector3(0.72, 1.02, 1.55), trim)
+	_box(car, Vector3(0.12, 0.24, 3.2), Vector3(-1.02, 0.22, 0), trim)
+	_box(car, Vector3(0.12, 0.24, 3.2), Vector3(1.02, 0.22, 0), trim)
 	for x in [-1.08, 1.08]:
 		for z in [-1.35, 1.35]:
-			var wheel := _box(car, Vector3(0.34, 0.72, 0.82), Vector3(x, 0.18, z), rubber)
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.43
+			wheel_mesh.bottom_radius = 0.43
+			wheel_mesh.height = 0.3
+			wheel.mesh = wheel_mesh
+			wheel.position = Vector3(x, 0.32, z)
 			wheel.rotation.z = PI / 2.0
+			wheel.material_override = rubber
+			car.add_child(wheel)
+			var hub := MeshInstance3D.new()
+			var hub_mesh := CylinderMesh.new()
+			hub_mesh.top_radius = 0.2
+			hub_mesh.bottom_radius = 0.2
+			hub_mesh.height = 0.315
+			hub.mesh = hub_mesh
+			hub.position = Vector3(x * 1.01, 0.32, z)
+			hub.rotation.z = PI / 2.0
+			hub.material_override = alloy
+			car.add_child(hub)
 	var lamp := _mat(Color(0.65, 0.9, 1.0), 0.0, 0.12)
 	_box(car, Vector3(0.55, 0.13, 0.08), Vector3(-0.58, 0.57, -2.14), lamp)
 	_box(car, Vector3(0.55, 0.13, 0.08), Vector3(0.58, 0.57, -2.14), lamp)
+	_box(car, Vector3(0.42, 0.13, 0.08), Vector3(-0.62, 0.52, 2.14), red)
+	_box(car, Vector3(0.42, 0.13, 0.08), Vector3(0.62, 0.52, 2.14), red)
+	_box(car, Vector3(0.28, 0.18, 0.16), Vector3(-0.48, 0.28, 2.18), alloy)
+	_box(car, Vector3(0.28, 0.18, 0.16), Vector3(0.48, 0.28, 2.18), alloy)
 
 func _build_camera() -> void:
 	camera = Camera3D.new()
