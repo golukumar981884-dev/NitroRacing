@@ -63,6 +63,51 @@ jobs:
             -o godot/assets/cars/player_supercar.glb
           test "$(stat -c%s godot/assets/cars/player_supercar.glb)" -gt 1000000
 
+      - name: Download free CC0 asphalt PBR textures from Poly Haven
+        run: |
+          mkdir -p godot/assets/textures
+          curl -L --fail --retry 3 -H "User-Agent: NitroRacing-Android/1.0" \
+            "https://api.polyhaven.com/files/asphalt_track" -o /tmp/asphalt_files.json
+          python3 - <<'PY'
+          import json, subprocess, sys
+          data = json.load(open("/tmp/asphalt_files.json"))
+          def find_map(node, names):
+              if isinstance(node, dict):
+                  for key, value in node.items():
+                      if key.lower() in names:
+                          def find_jpg(x):
+                              if isinstance(x, dict):
+                                  for fmt in ("jpg", "png"):
+                                      if fmt in x and isinstance(x[fmt], dict) and x[fmt].get("url"):
+                                          return x[fmt]["url"]
+                                  for v in x.values():
+                                      found = find_jpg(v)
+                                      if found: return found
+                              return None
+                          url = find_jpg(value)
+                          if url: return url
+                  for value in node.values():
+                      found = find_map(value, names)
+                      if found: return found
+              return None
+          maps = {
+              "road_albedo.jpg": {"diff", "diffuse", "albedo", "color"},
+              "road_normal.jpg": {"nor_gl", "normal_gl", "normal"},
+              "road_roughness.jpg": {"rough", "roughness"},
+          }
+          for filename, keys in maps.items():
+              url = find_map(data, keys)
+              if not url:
+                  print("Missing Poly Haven texture map:", filename, file=sys.stderr)
+                  sys.exit(1)
+              subprocess.run(["curl", "-L", "--fail", "--retry", "3", url,
+                              "-o", "godot/assets/textures/" + filename], check=True)
+              print("Downloaded", filename)
+          PY
+          test "$(stat -c%s godot/assets/textures/road_albedo.jpg)" -gt 10000
+          test "$(stat -c%s godot/assets/textures/road_normal.jpg)" -gt 10000
+          test "$(stat -c%s godot/assets/textures/road_roughness.jpg)" -gt 10000
+
       - name: Validate Godot project
         run: |
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
