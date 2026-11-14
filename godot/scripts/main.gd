@@ -163,6 +163,20 @@ func _build_car() -> void:
 	car = Node3D.new()
 	car.position = Vector3(0, 0.35, 4)
 	add_child(car)
+
+	# Prefer the textured, real-world-scale CC0 supercar downloaded by CI.
+	# Keep the procedural car as a safe fallback for editor runs without the asset.
+	var model_path := "res://assets/cars/player_supercar.glb"
+	if ResourceLoader.exists(model_path):
+		var packed_model := load(model_path) as PackedScene
+		if packed_model != null:
+			var model := packed_model.instantiate() as Node3D
+			if model != null:
+				model.scale = Vector3.ONE
+				model.position = Vector3(0, 0.25, 0)
+				car.add_child(model)
+				return
+
 	var paint := _mat(Color(0.015, 0.32, 0.96), 0.9, 0.16)
 	var paint_dark := _mat(Color(0.008, 0.075, 0.22), 0.82, 0.22)
 	var glass := _mat(Color(0.012, 0.035, 0.065), 0.72, 0.1)
@@ -170,7 +184,6 @@ func _build_car() -> void:
 	var alloy := _mat(Color(0.62, 0.76, 0.88), 0.92, 0.16)
 	var red := _mat(Color(1.0, 0.025, 0.018), 0.25, 0.2)
 	var rubber := _mat(Color(0.008, 0.01, 0.015), 0.0, 0.98)
-	# Low, layered bodywork gives the prototype a sharper supercar silhouette.
 	_box(car, Vector3(2.12, 0.42, 4.35), Vector3(0, 0.43, 0), paint)
 	_box(car, Vector3(1.92, 0.22, 2.65), Vector3(0, 0.67, -0.48), paint)
 	_box(car, Vector3(1.72, 0.58, 1.82), Vector3(0, 0.96, -0.18), glass)
@@ -178,7 +191,6 @@ func _build_car() -> void:
 	_box(car, Vector3(1.92, 0.13, 0.82), Vector3(0, 0.62, 1.48), paint)
 	_box(car, Vector3(2.18, 0.12, 0.42), Vector3(0, 0.25, -2.18), trim)
 	_box(car, Vector3(2.25, 0.10, 0.42), Vector3(0, 0.18, 2.13), paint_dark)
-	# Front splitter, side skirts, mirrors and rear wing.
 	_box(car, Vector3(2.28, 0.10, 0.36), Vector3(0, 0.19, -2.3), alloy)
 	_box(car, Vector3(0.13, 0.22, 3.25), Vector3(-1.08, 0.22, 0), trim)
 	_box(car, Vector3(0.13, 0.22, 3.25), Vector3(1.08, 0.22, 0), trim)
@@ -210,15 +222,11 @@ func _build_car() -> void:
 			hub.rotation.z = PI / 2.0
 			hub.material_override = alloy
 			car.add_child(hub)
-			var hub_center := _mat(Color(0.025, 0.06, 0.12), 0.8, 0.18)
-			_box(car, Vector3(0.08, 0.08, 0.08), Vector3(x * 1.17, 0.32, z), hub_center)
 	var lamp := _mat(Color(0.65, 0.92, 1.0), 0.15, 0.08)
 	_box(car, Vector3(0.62, 0.12, 0.09), Vector3(-0.59, 0.55, -2.2), lamp)
 	_box(car, Vector3(0.62, 0.12, 0.09), Vector3(0.59, 0.55, -2.2), lamp)
 	_box(car, Vector3(0.52, 0.12, 0.08), Vector3(-0.65, 0.49, 2.2), red)
 	_box(car, Vector3(0.52, 0.12, 0.08), Vector3(0.65, 0.49, 2.2), red)
-	_box(car, Vector3(0.28, 0.16, 0.18), Vector3(-0.48, 0.28, 2.23), alloy)
-	_box(car, Vector3(0.28, 0.16, 0.18), Vector3(0.48, 0.28, 2.23), alloy)
 	var flame_mat := StandardMaterial3D.new()
 	flame_mat.albedo_color = Color(0.05, 0.72, 1.0)
 	flame_mat.emission_enabled = true
