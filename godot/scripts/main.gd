@@ -75,6 +75,18 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, material: Material) -> Me
 	parent.add_child(n)
 	return n
 
+func _mountain(parent: Node3D, pos: Vector3, size: Vector3, material: Material, seed_value: int) -> void:
+	var rock := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radial_segments = 10
+	mesh.rings = 5
+	rock.mesh = mesh
+	rock.position = pos
+	rock.scale = size
+	rock.rotation_degrees = Vector3(float(seed_value % 17), float(seed_value * 13 % 360), float(seed_value * 7 % 12))
+	rock.material_override = material
+	parent.add_child(rock)
+
 func _build_world() -> void:
 	var env := WorldEnvironment.new()
 	var e := Environment.new()
@@ -121,6 +133,27 @@ func _build_world() -> void:
 			var x: float = float(side) * (22.0 + float((i * 7) % 13))
 			var h := 7.0 + float((i * 3) % 11)
 			_box(self, Vector3(5.0, h, 5.0), Vector3(x, h * 0.5 - 0.2, z), rock if i % 3 == 0 else tree)
+
+	# Layered canyon cliffs create a stronger sense of scale around the road.
+	var cliff_dark := _mat(Color(0.16, 0.19, 0.25), 0.0, 1.0)
+	var cliff_warm := _mat(Color(0.34, 0.25, 0.19), 0.0, 0.96)
+	var cliff_light := _mat(Color(0.43, 0.39, 0.32), 0.0, 0.94)
+	for i in range(19):
+		var z := -235.0 + float(i) * 13.0
+		for side in [-1.0, 1.0]:
+			var x := side * (29.0 + float((i * 11) % 10))
+			var h := 17.0 + float((i * 7) % 15)
+			var w := 12.0 + float((i * 5) % 9)
+			var depth := 17.0 + float((i * 3) % 12)
+			var cliff_mat: Material = cliff_warm if i % 3 == 0 else (cliff_light if i % 3 == 1 else cliff_dark)
+			_mountain(self, Vector3(x, h * 0.42, z), Vector3(w, h, depth), cliff_mat, i * 9 + int(side))
+			_mountain(self, Vector3(x + side * 8.0, h * 0.62, z - 5.0), Vector3(w * 0.68, h * 0.78, depth * 0.72), cliff_dark, i * 13)
+	# Tall roadside rock spires and reflective track markers.
+	for i in range(13):
+		var z := -218.0 + float(i) * 17.0
+		for side in [-1.0, 1.0]:
+			var spire_h := 8.0 + float((i * 5) % 8)
+			_mountain(self, Vector3(side * (19.0 + float(i % 3) * 2.0), spire_h * 0.5, z), Vector3(2.4, spire_h, 2.8), cliff_warm if i % 2 == 0 else cliff_dark, i + 31)
 	var glow := _mat(Color(0.0, 0.75, 1.0), 0.25, 0.25)
 	for z in [-30.0, -95.0, -160.0]:
 		_box(self, Vector3(0.35, 7, 0.35), Vector3(-14.0, 3.5, z), glow)
