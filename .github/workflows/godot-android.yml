@@ -113,7 +113,12 @@ jobs:
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
           export ANDROID_HOME=/usr/lib/android-sdk
           export ANDROID_SDK_ROOT=/usr/lib/android-sdk
-          godot --headless --editor --path godot --quit
+          set -o pipefail
+          godot --headless --editor --path godot --quit 2>&1 | tee /tmp/godot-validation.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/godot-validation.log; then
+            echo "Godot script validation failed; refusing to export a broken APK."
+            exit 1
+          fi
 
       - name: Export Android APK
         run: |
