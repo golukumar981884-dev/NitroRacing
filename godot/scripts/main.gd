@@ -21,10 +21,28 @@ var nitro_flames: Array[MeshInstance3D] = []
 const MAX_SPEED := 92.0
 
 func _ready() -> void:
+	# Draw a visible 2D startup layer before any 3D setup. This also helps
+	# distinguish a script/scene startup failure from a 3D rendering failure.
+	var startup_layer := CanvasLayer.new()
+	startup_layer.layer = 100
+	add_child(startup_layer)
+	var startup_bg := ColorRect.new()
+	startup_bg.color = Color(0.025, 0.055, 0.10, 1.0)
+	startup_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	startup_layer.add_child(startup_bg)
+	var startup_label := Label.new()
+	startup_label.text = "NITRORACING\\nStarting game..."
+	startup_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	startup_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	startup_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	startup_label.add_theme_font_size_override("font_size", 34)
+	startup_label.add_theme_color_override("font_color", Color(0.35, 0.85, 1.0))
+	startup_layer.add_child(startup_label)
 	_build_world()
 	_build_car()
 	_build_camera()
 	_build_hud()
+	startup_layer.queue_free()
 
 func _process(delta: float) -> void:
 	race_time += delta
