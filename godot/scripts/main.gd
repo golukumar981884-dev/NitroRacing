@@ -288,7 +288,7 @@ func _build_world() -> void:
 	for i in range(42):
 		var z := -228.0 + float(i) * 5.2
 		for side in [-1.0, 1.0]:
-			var x := side * (18.5 + float((i * 9) % 8))
+			var x: float = side * (18.5 + float((i * 9) % 8))
 			var scale_value := 0.65 + float(i % 4) * 0.22
 			_mountain(self, Vector3(x, 0.35 * scale_value, z), Vector3(1.1, 0.65, 1.4) * scale_value, cliff_warm if i % 2 == 0 else cliff_dark, i * 17)
 
