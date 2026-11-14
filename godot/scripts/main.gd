@@ -15,6 +15,8 @@ var nitro_on := false
 var hud_speed: Label
 var hud_nitro: Label
 var hud_time: Label
+var wheels: Array[MeshInstance3D] = []
+var nitro_flames: Array[MeshInstance3D] = []
 
 const MAX_SPEED := 92.0
 
@@ -43,6 +45,11 @@ func _process(delta: float) -> void:
 	car.rotate_y(-steering * delta * (0.8 + speed / MAX_SPEED))
 	car.translate(Vector3(steering * speed * delta * 0.22, 0, -speed * delta * 0.34))
 	car.position.x = clampf(car.position.x, -13.0, 13.0)
+	for wheel in wheels:
+		wheel.rotate_object_local(Vector3.RIGHT, speed * delta * 0.19)
+	for flame in nitro_flames:
+		flame.visible = boost
+		flame.scale.z = randf_range(0.85, 1.35) if boost else 1.0
 	distance += speed * delta / 1000.0
 	camera.global_position = camera.global_position.lerp(car.global_position + Vector3(0, 5.2, 10.5), delta * 4.0)
 	camera.fov = lerpf(camera.fov, 74.0 + (12.0 if boost else 0.0), delta * 3.0)
@@ -123,50 +130,71 @@ func _build_car() -> void:
 	car = Node3D.new()
 	car.position = Vector3(0, 0.35, 4)
 	add_child(car)
-	var paint := _mat(Color(0.02, 0.42, 0.95), 0.82, 0.2)
-	var glass := _mat(Color(0.025, 0.055, 0.09), 0.62, 0.12)
-	var trim := _mat(Color(0.012, 0.018, 0.028), 0.45, 0.3)
-	var alloy := _mat(Color(0.55, 0.68, 0.78), 0.85, 0.2)
-	var red := _mat(Color(1.0, 0.035, 0.025), 0.2, 0.25)
-	var rubber := _mat(Color(0.012, 0.014, 0.02), 0.0, 0.95)
-	_box(car, Vector3(2.05, 0.58, 4.25), Vector3(0, 0.48, 0), paint)
-	_box(car, Vector3(1.55, 0.55, 1.9), Vector3(0, 0.98, -0.25), glass)
-	_box(car, Vector3(1.9, 0.16, 0.55), Vector3(0, 0.3, -2.0), paint)
-	_box(car, Vector3(0.12, 0.025, 2.5), Vector3(0, 0.79, -0.1), alloy)
-	_box(car, Vector3(2.0, 0.12, 0.16), Vector3(0, 1.25, 1.55), trim)
-	_box(car, Vector3(0.12, 0.48, 0.12), Vector3(-0.72, 1.02, 1.55), trim)
-	_box(car, Vector3(0.12, 0.48, 0.12), Vector3(0.72, 1.02, 1.55), trim)
-	_box(car, Vector3(0.12, 0.24, 3.2), Vector3(-1.02, 0.22, 0), trim)
-	_box(car, Vector3(0.12, 0.24, 3.2), Vector3(1.02, 0.22, 0), trim)
+	var paint := _mat(Color(0.015, 0.32, 0.96), 0.9, 0.16)
+	var paint_dark := _mat(Color(0.008, 0.075, 0.22), 0.82, 0.22)
+	var glass := _mat(Color(0.012, 0.035, 0.065), 0.72, 0.1)
+	var trim := _mat(Color(0.008, 0.012, 0.02), 0.5, 0.28)
+	var alloy := _mat(Color(0.62, 0.76, 0.88), 0.92, 0.16)
+	var red := _mat(Color(1.0, 0.025, 0.018), 0.25, 0.2)
+	var rubber := _mat(Color(0.008, 0.01, 0.015), 0.0, 0.98)
+	# Low, layered bodywork gives the prototype a sharper supercar silhouette.
+	_box(car, Vector3(2.12, 0.42, 4.35), Vector3(0, 0.43, 0), paint)
+	_box(car, Vector3(1.92, 0.22, 2.65), Vector3(0, 0.67, -0.48), paint)
+	_box(car, Vector3(1.72, 0.58, 1.82), Vector3(0, 0.96, -0.18), glass)
+	_box(car, Vector3(1.82, 0.12, 0.72), Vector3(0, 1.28, -0.1), paint_dark)
+	_box(car, Vector3(1.92, 0.13, 0.82), Vector3(0, 0.62, 1.48), paint)
+	_box(car, Vector3(2.18, 0.12, 0.42), Vector3(0, 0.25, -2.18), trim)
+	_box(car, Vector3(2.25, 0.10, 0.42), Vector3(0, 0.18, 2.13), paint_dark)
+	# Front splitter, side skirts, mirrors and rear wing.
+	_box(car, Vector3(2.28, 0.10, 0.36), Vector3(0, 0.19, -2.3), alloy)
+	_box(car, Vector3(0.13, 0.22, 3.25), Vector3(-1.08, 0.22, 0), trim)
+	_box(car, Vector3(0.13, 0.22, 3.25), Vector3(1.08, 0.22, 0), trim)
+	_box(car, Vector3(2.05, 0.12, 0.18), Vector3(0, 1.32, 1.72), trim)
+	_box(car, Vector3(0.12, 0.42, 0.12), Vector3(-0.72, 1.12, 1.72), trim)
+	_box(car, Vector3(0.12, 0.42, 0.12), Vector3(0.72, 1.12, 1.72), trim)
+	_box(car, Vector3(0.28, 0.18, 0.42), Vector3(-1.12, 0.82, -0.78), paint)
+	_box(car, Vector3(0.28, 0.18, 0.42), Vector3(1.12, 0.82, -0.78), paint)
 	for x in [-1.08, 1.08]:
-		for z in [-1.35, 1.35]:
+		for z in [-1.38, 1.38]:
 			var wheel := MeshInstance3D.new()
 			var wheel_mesh := CylinderMesh.new()
-			wheel_mesh.top_radius = 0.43
-			wheel_mesh.bottom_radius = 0.43
-			wheel_mesh.height = 0.3
+			wheel_mesh.top_radius = 0.44
+			wheel_mesh.bottom_radius = 0.44
+			wheel_mesh.height = 0.32
 			wheel.mesh = wheel_mesh
 			wheel.position = Vector3(x, 0.32, z)
 			wheel.rotation.z = PI / 2.0
 			wheel.material_override = rubber
 			car.add_child(wheel)
+			wheels.append(wheel)
 			var hub := MeshInstance3D.new()
 			var hub_mesh := CylinderMesh.new()
-			hub_mesh.top_radius = 0.2
-			hub_mesh.bottom_radius = 0.2
-			hub_mesh.height = 0.315
+			hub_mesh.top_radius = 0.23
+			hub_mesh.bottom_radius = 0.23
+			hub_mesh.height = 0.335
 			hub.mesh = hub_mesh
 			hub.position = Vector3(x * 1.01, 0.32, z)
 			hub.rotation.z = PI / 2.0
 			hub.material_override = alloy
 			car.add_child(hub)
-	var lamp := _mat(Color(0.65, 0.9, 1.0), 0.0, 0.12)
-	_box(car, Vector3(0.55, 0.13, 0.08), Vector3(-0.58, 0.57, -2.14), lamp)
-	_box(car, Vector3(0.55, 0.13, 0.08), Vector3(0.58, 0.57, -2.14), lamp)
-	_box(car, Vector3(0.42, 0.13, 0.08), Vector3(-0.62, 0.52, 2.14), red)
-	_box(car, Vector3(0.42, 0.13, 0.08), Vector3(0.62, 0.52, 2.14), red)
-	_box(car, Vector3(0.28, 0.18, 0.16), Vector3(-0.48, 0.28, 2.18), alloy)
-	_box(car, Vector3(0.28, 0.18, 0.16), Vector3(0.48, 0.28, 2.18), alloy)
+			var hub_center := _mat(Color(0.025, 0.06, 0.12), 0.8, 0.18)
+			_box(car, Vector3(0.08, 0.08, 0.08), Vector3(x * 1.17, 0.32, z), hub_center)
+	var lamp := _mat(Color(0.65, 0.92, 1.0), 0.15, 0.08)
+	_box(car, Vector3(0.62, 0.12, 0.09), Vector3(-0.59, 0.55, -2.2), lamp)
+	_box(car, Vector3(0.62, 0.12, 0.09), Vector3(0.59, 0.55, -2.2), lamp)
+	_box(car, Vector3(0.52, 0.12, 0.08), Vector3(-0.65, 0.49, 2.2), red)
+	_box(car, Vector3(0.52, 0.12, 0.08), Vector3(0.65, 0.49, 2.2), red)
+	_box(car, Vector3(0.28, 0.16, 0.18), Vector3(-0.48, 0.28, 2.23), alloy)
+	_box(car, Vector3(0.28, 0.16, 0.18), Vector3(0.48, 0.28, 2.23), alloy)
+	var flame_mat := StandardMaterial3D.new()
+	flame_mat.albedo_color = Color(0.05, 0.72, 1.0)
+	flame_mat.emission_enabled = true
+	flame_mat.emission = Color(0.02, 0.62, 1.0)
+	flame_mat.emission_energy_multiplier = 3.5
+	for x in [-0.48, 0.48]:
+		var flame := _box(car, Vector3(0.22, 0.22, 0.85), Vector3(x, 0.34, 2.68), flame_mat)
+		flame.visible = false
+		nitro_flames.append(flame)
 
 func _build_camera() -> void:
 	camera = Camera3D.new()
