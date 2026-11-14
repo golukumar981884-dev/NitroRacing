@@ -17,6 +17,9 @@ var hud_nitro: Label
 var hud_time: Label
 var wheels: Array[MeshInstance3D] = []
 var nitro_flames: Array[MeshInstance3D] = []
+var car_visual: Node3D
+var camera_shake := 0.0
+var drift_amount := 0.0
 
 const MAX_SPEED := 92.0
 
@@ -51,29 +54,41 @@ func _process(delta: float) -> void:
 	var boost := nitro_on and nitro > 0.0 and throttle > 0.0
 	var target := MAX_SPEED * throttle
 	if boost:
-		target *= 1.42
-		nitro = maxf(0.0, nitro - 28.0 * delta)
+		target *= 1.38
+		nitro = maxf(0.0, nitro - 24.0 * delta)
 	else:
-		nitro = minf(100.0, nitro + 8.0 * delta)
+		nitro = minf(100.0, nitro + 10.0 * delta)
 	if brake > 0.0:
 		target = 0.0
-	speed = move_toward(speed, target, (34.0 if throttle > 0.0 else 46.0) * delta)
+	var acceleration := 25.0 if throttle > 0.0 else 13.0
+	if brake > 0.0:
+		acceleration = 78.0
+	speed = move_toward(speed, target, acceleration * delta)
 	var steer_input := float(steer_right) - float(steer_left)
-	steering = move_toward(steering, steer_input, delta * 3.5)
-	car.rotate_y(-steering * delta * (0.8 + speed / MAX_SPEED))
-	car.translate(Vector3(steering * speed * delta * 0.22, 0, -speed * delta * 0.34))
-	car.position.x = clampf(car.position.x, -13.0, 13.0)
+	steering = move_toward(steering, steer_input, delta * 2.8)
+	var speed_factor := clampf(speed / MAX_SPEED, 0.0, 1.25)
+	drift_amount = move_toward(drift_amount, absf(steer_input) * speed_factor, delta * 2.0)
+	car.rotate_y(-steering * delta * (0.42 + speed_factor * 0.68))
+	car.translate(Vector3(steering * speed * delta * 0.30, 0, -speed * delta * 0.34))
+	car.position.x = clampf(car.position.x, -11.8, 11.8)
+	if car_visual != null:
+		car_visual.rotation.z = lerp_angle(car_visual.rotation.z, -steering * 0.11, delta * 4.0)
+		car_visual.position.y = 0.25 + sin(race_time * 13.0) * 0.018 * speed_factor
+	camera_shake = move_toward(camera_shake, (0.055 if boost else 0.018) * speed_factor, delta * 0.5)
 	for wheel in wheels:
 		wheel.rotate_object_local(Vector3.RIGHT, speed * delta * 0.19)
 	for flame in nitro_flames:
 		flame.visible = boost
 		flame.scale.z = randf_range(0.85, 1.35) if boost else 1.0
 	distance += speed * delta / 1000.0
-	camera.global_position = camera.global_position.lerp(car.global_position + Vector3(0, 5.2, 10.5), delta * 4.0)
-	camera.fov = lerpf(camera.fov, 74.0 + (12.0 if boost else 0.0), delta * 3.0)
+	var camera_target := car.global_position + Vector3(0, 5.0 + speed_factor * 0.45, 11.8 + speed_factor * 1.2)
+	camera_target.x += steering * 0.8
+	camera_target += Vector3(randf_range(-camera_shake, camera_shake), randf_range(-camera_shake, camera_shake), 0)
+	camera.global_position = camera.global_position.lerp(camera_target, delta * 3.2)
+	camera.fov = lerpf(camera.fov, 70.0 + (14.0 if boost else 0.0) + speed_factor * 3.0, delta * 2.5)
 	camera.look_at(car.global_position + Vector3(0, 1.0, -5.0), Vector3.UP)
 	hud_speed.text = "%03d KM/H" % int(speed * 2.15)
-	hud_nitro.text = "NITRO  %d%%" % int(nitro)
+	hud_nitro.text = "NITRO  %d%%   %s" % [int(nitro), "BOOST" if boost else "READY"]
 	hud_time.text = "TIME  %02d:%02d" % [int(race_time) / 60, int(race_time) % 60]
 
 func _mat(color: Color, metallic := 0.0, roughness := 0.55) -> StandardMaterial3D:
@@ -317,9 +332,11 @@ func _build_car() -> void:
 				model.scale = Vector3.ONE
 				model.rotation.y = PI / 2.0
 				model.position = Vector3(0, 0.25, 0)
+				car_visual = model
 				car.add_child(model)
 				return
 
+	car_visual = car
 	var paint := _mat(Color(0.015, 0.32, 0.96), 0.9, 0.16)
 	var paint_dark := _mat(Color(0.008, 0.075, 0.22), 0.82, 0.22)
 	var glass := _mat(Color(0.012, 0.035, 0.065), 0.72, 0.1)
@@ -426,8 +443,12 @@ func _make_button(parent: Node, caption: String, pos: Vector2, size: Vector2, ac
 	b.text = caption
 	b.position = pos
 	b.size = size
-	b.add_theme_font_size_override("font_size", 26 if action != "go" else 34)
-	b.modulate = Color(0.55, 0.85, 1.0, 0.9) if action == "nitro" else Color(1, 1, 1, 0.88)
+	b.add_theme_font_size_override("font_size", 24 if action != "go" else 32)
+	b.add_theme_color_override("font_color", Color(0.92, 0.97, 1.0))
+	b.add_theme_color_override("font_hover_color", Color(0.2, 0.85, 1.0))
+	b.add_theme_stylebox_override("normal", _button_style(Color(0.025, 0.075, 0.13, 0.78), Color(0.16, 0.65, 0.92, 0.9)))
+	b.add_theme_stylebox_override("pressed", _button_style(Color(0.02, 0.42, 0.68, 0.95), Color(0.48, 0.9, 1.0)))
+	b.add_theme_stylebox_override("hover", _button_style(Color(0.04, 0.16, 0.25, 0.9), Color(0.28, 0.78, 1.0)))
 	parent.add_child(b)
 	b.button_down.connect(func(): _set_action(action, true))
 	b.button_up.connect(func(): _set_action(action, false))
@@ -439,3 +460,15 @@ func _set_action(action: String, value: bool) -> void:
 		"brake": braking = value
 		"go": accelerate = value
 		"nitro": nitro_on = value
+
+func _button_style(fill: Color, outline: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = outline
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(18)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
