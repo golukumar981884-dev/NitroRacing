@@ -97,7 +97,7 @@ func _build_world() -> void:
 	for i in range(34):
 		var z := -220.0 + float(i) * 7.0
 		for side in [-1.0, 1.0]:
-			var x := side * (22.0 + float((i * 7) % 13))
+			var x: float = float(side) * (22.0 + float((i * 7) % 13))
 			var h := 7.0 + float((i * 3) % 11)
 			_box(self, Vector3(5.0, h, 5.0), Vector3(x, h * 0.5 - 0.2, z), rock if i % 3 == 0 else tree)
 	var glow := _mat(Color(0.0, 0.75, 1.0), 0.25, 0.25)
