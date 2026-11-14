@@ -22,7 +22,7 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/cmdline-tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
-          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;33.0.2" "build-tools;35.0.0"
 
           mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
           curl -L --fail --retry 3 \
