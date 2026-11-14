@@ -55,13 +55,32 @@ jobs:
           export/android/android_sdk_path = "$ANDROID_HOME"
           EOF
 
-      - name: Download free CC0 supercar model
+      - name: Download CC0 mid-engine supercar model
         run: |
           mkdir -p godot/assets/cars
           curl -L --fail --retry 3 \
-            "https://raw.githubusercontent.com/JaronKBragg7337/spectral-gt-rs/main/spectral_gt_rs_game_ready.glb" \
+            "https://files.innerscene.com/library/generic-mid-engine-supercar-73f252c5/b41b620d8a8890b1b70a/generic-mid-engine-supercar.glb" \
             -o godot/assets/cars/player_supercar.glb
           test "$(stat -c%s godot/assets/cars/player_supercar.glb)" -gt 3000000
+          python3 - <<'PY'
+          import struct, json
+          p = "godot/assets/cars/player_supercar.glb"
+          data = open(p, "rb").read()
+          if data[:4] != b"glTF":
+              raise SystemExit("Downloaded car is not a GLB file")
+          version, total = struct.unpack_from("<II", data, 4)
+          if version != 2 or total != len(data):
+              raise SystemExit("Invalid GLB header or length")
+          chunk_len, chunk_type = struct.unpack_from("<II", data, 12)
+          if chunk_type != 0x4E4F534A:
+              raise SystemExit("GLB JSON chunk missing")
+          doc = json.loads(data[20:20+chunk_len].decode("utf-8"))
+          meshes = doc.get("meshes", [])
+          nodes = doc.get("nodes", [])
+          if not meshes or not nodes:
+              raise SystemExit("Car GLB has no mesh/node data")
+          print("Validated CC0 supercar GLB:", len(meshes), "meshes,", len(nodes), "nodes,", len(data), "bytes")
+          PY
 
       - name: Download free CC0 asphalt PBR textures from Poly Haven
         run: |
@@ -107,6 +126,25 @@ jobs:
           test "$(stat -c%s godot/assets/textures/road_albedo.jpg)" -gt 10000
           test "$(stat -c%s godot/assets/textures/road_normal.jpg)" -gt 10000
           test "$(stat -c%s godot/assets/textures/road_roughness.jpg)" -gt 10000
+
+      - name: Download Poly Haven CC0 2K outdoor HDRI
+        run: |
+          mkdir -p godot/assets/hdri
+          curl -L --fail --retry 3 -H "User-Agent: NitroRacing-Android/1.0" \
+            "https://api.polyhaven.com/files/kloppenheim_06_puresky" -o /tmp/hdri_files.json
+          python3 - <<'PY'
+          import json, subprocess, sys
+          data = json.load(open("/tmp/hdri_files.json"))
+          try:
+              entry = data["hdri"]["2k"]["hdr"]["url"]
+          except (KeyError, TypeError):
+              print("Poly Haven 2K HDRI download is unavailable", file=sys.stderr)
+              sys.exit(1)
+          subprocess.run(["curl", "-L", "--fail", "--retry", "3", entry,
+                          "-o", "godot/assets/hdri/racing_sky_2k.hdr"], check=True)
+          print("Downloaded Poly Haven Kloppenheim 2K HDRI")
+          PY
+          test "$(stat -c%s godot/assets/hdri/racing_sky_2k.hdr)" -gt 100000
 
       - name: Validate Godot project
         shell: bash
