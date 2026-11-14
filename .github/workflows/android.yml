@@ -1,0 +1,55 @@
+name: NitroRacing Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install 7-Zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Extract Unity project archive
+        shell: bash
+        run: |
+          archive="$(find . -maxdepth 1 -type f -iname '*.7z' -print -quit)"
+          if [ -z "$archive" ]; then
+            echo "No .7z project archive found in repository root."
+            exit 1
+          fi
+          7z x "$archive" -y -o./unity-extracted
+          project_file="$(find ./unity-extracted -type f -path '*/ProjectSettings/ProjectVersion.txt' -print -quit)"
+          if [ -z "$project_file" ]; then
+            echo "Archive does not contain a Unity project (ProjectSettings/ProjectVersion.txt missing)."
+            exit 1
+          fi
+          project_dir="$(dirname "$(dirname "$project_file")")"
+          echo "UNITY_PROJECT_PATH=$project_dir" >> "$GITHUB_ENV"
+          echo "Unity project found at: $project_dir"
+
+      - name: Build Android APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.UNITY_PROJECT_PATH }}
+          targetPlatform: Android
+          buildsPath: build
+          buildName: NitroRacing
+          androidAppBundle: false
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NitroRacing-Android-APK
+          path: build/**/*.apk
+          if-no-files-found: error
