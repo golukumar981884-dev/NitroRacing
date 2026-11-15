@@ -36,7 +36,7 @@ jobs:
 
           mkdir -p "$HOME/.local/share/godot/export_templates/4.4.1.stable"
           curl -L --fail --retry 3 \
-            https://github.com/godotengine/tekken/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz \
+            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz \
             -o /tmp/godot-templates.tpz
           mkdir -p /tmp/godot-templates
           unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
