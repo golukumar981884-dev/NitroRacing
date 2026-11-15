@@ -1,0 +1,84 @@
+name: Tag Arena Godot Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Install Android export requirements
+        run: |
+          apt-get update
+          apt-get install -y openjdk-17-jdk unzip curl
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+          export PATH="$ANDROID_HOME/cmdline-tools/cmdline-tools/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          test -x "$ANDROID_HOME/build-tools/34.0.0/aapt" || (echo "Android Build Tools 34.0.0 did not install correctly"; ls -la "$ANDROID_HOME/build-tools"; exit 1)
+          echo "=== Android SDK build-tools diagnostic ==="
+          ls -la "$ANDROID_HOME/build-tools"
+          for v in 34.0.0; do
+            echo "--- build-tools $v ---"
+            ls -l "$ANDROID_HOME/build-tools/$v/apksigner" "$ANDROID_HOME/build-tools/$v/aapt" 2>&1 || true
+            "$ANDROID_HOME/build-tools/$v/apksigner" --version 2>&1 || true
+          done
+          test -f "$ANDROID_HOME/platforms/android-34/android.jar" || (echo "Android platform 34 missing"; exit 1)
+
+          mkdir -p "$HOME/.local/share/tekken/export_templates/4.4.1.stable"
+          curl -L --fail --retry 3 \
+            https://github.com/godotengine/tekken/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz \
+            -o /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          cp -a /tmp/godot-templates/templates/. "$HOME/.local/share/tekken/export_templates/4.4.1.stable/"
+
+          mkdir -p "$HOME/.android" "$HOME/.config/godot"
+          keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" \
+            -storepass android -keypass android -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+          cat > "$HOME/.config/tekken/editor_settings-4.4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          EOF
+
+      - name: Validate Godot project
+        shell: bash
+        run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+          set -o pipefail
+          godot --headless --editor --path godot --quit 2>&1 | tee /tmp/godot-validation.log
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script" /tmp/godot-validation.log; then
+            echo "Godot script validation failed; refusing to export a broken APK."
+            exit 1
+          fi
+
+      - name: Export Android APK
+        run: |
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          export ANDROID_HOME=/usr/lib/android-sdk
+          export ANDROID_SDK_ROOT=/usr/lib/android-sdk
+          mkdir -p tekken/build
+          godot --headless --verbose --path godot --export-debug "Android" build/TagArena.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TagArena-Android-APK
+          path: tekken/build/TagArena.apk
+          if-no-files-found: error
